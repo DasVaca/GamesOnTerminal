@@ -1,0 +1,22 @@
+---------------------------------- SLIDE --------------------------------------
+The goal of the game is to sort the matrix by sliding the cells
+
+                    1 4 5           1 2 3
+                    9 7 2     ->    4 5
+                    3   8           7 8 9
+
+You can choose the size you like between 2 and 10!
+To move a cell just type its value and whether you'd like to place it
+i.e
+
+  1 4 5
+  9 7 2
+  3   8
+
+> 3 r
+
+  1 4 5
+  9 7 2
+    3 8
+
+                          Type enter to start
