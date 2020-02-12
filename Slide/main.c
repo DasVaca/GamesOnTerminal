@@ -4,50 +4,44 @@
 
 typedef struct Input {
   int value;
-  int direction;
+  char direction;
 } Input;
 
-enum Directions { UP, DOWN, RIGHT, LEFT };
-
 void print_instructions();
-int ** create_matrix(int size, int * blank);
+void fill_matrix(int ** matrix, int size, int * empty_cell);
 void print_matrix(int ** matrix, int size);
-void get_input(Input * input, int blank, int upper_limit);
-void make_move(int ** matrix, int size, int blank, Input input);
+void get_input(int ** matrix, Input * input, int size, int * row, int * col, int empty_cell);
+void make_move(int ** matrix, char dir, int row, int co, int empty_cell);
+void swap(int *a, int *b);
+int is_solved(int ** matrix, int size, int empty_cell);
 
-int main(int argc, char const * argv[]) {
-  int size = atoi(argv[1]);
-
-  if (argc == 1)
-  {
-    puts("Use ./main <matrix size>");
-    puts("Size must be between 2 and 10");
-    exit(0);
-  }
-
-	if(size < 2 || size > 10)
-	{
-		puts("Error: size must be between 2 and 10");
-		exit(0);
-  }
-
+int main() {
   print_instructions();
-
-  int blank;
-  int ** matrix = create_matrix(size, &blank);
+  int size;
+  int ** matrix;
   Input * input;
+  int row, col; // position of cell to slide
+  int empty_cell = 0;
+
+  do {
+    printf("size > ");
+    scanf("%i", &size);
+  } while( size > 10 || size < 2);
+
   input = malloc(sizeof(Input));
+  matrix = malloc(sizeof(int *)*size);
+  for(int i = 0; i < size; i++)
+    matrix[i] = malloc(sizeof(int)*size);
 
-  print_matrix(matrix, size);
-  get_input(input, blank, size*size);
-  make_move(matrix, size, blank, input);
-  print_matrix(matrix, size);
+  fill_matrix(matrix, size, &empty_cell);
+  do {
+    print_matrix(matrix, size);
+    get_input(matrix, input, size, &row, &col, empty_cell);
+    make_move(matrix, input->direction, row, col, empty_cell);
+  } while(is_solved(matrix, size, empty_cell));
 
-
-  // free memory
-  for(int row = 0; row < size; row++)
-	   free(matrix[row]);
-
+  for(int i = 0; i < size; i++)
+    free(matrix[i]);
   free(matrix);
   free(input);
   return 0;
@@ -68,32 +62,31 @@ void print_instructions() {
     c = fgetc(instructions);
   }
 
-  getchar();
-  system("clear");
   fclose(instructions);
 }
 
-int ** create_matrix(int size, int * blank) {
-  int ** matrix;
+void fill_matrix(int ** matrix, int size, int * empty_cell) {
 
-  *blank = (rand() % size*size) + 1;
-
-  matrix = malloc( size*sizeof(int *));
-
-  for (int row = 0, inc = 1; row < size; row++)
-  {
-    matrix[row] = malloc(size*sizeof(int));
-
+  // fill ordered
+  for (int row = 0, inc = 1; row < size; row++) {
     for (int col = 0; col < size; col++, inc++)
-    {
-      if(inc != *blank)
-    	   matrix[row][col] = inc;
-      else
-        matrix[row][col] = 0; // blank space
-    }
+      matrix[row][col] = inc;
   }
-
-  return matrix;
+  // swap random cells
+  for(int changes = 0; changes < size*size - 2; changes++)
+  {
+    int Rrow1, Rcol1, Rrow2, Rcol2; // random cells to swap
+    Rrow1 = rand() % size;
+    Rcol1 = rand() % size;
+    Rrow2 = rand() % size;
+    Rcol2 = rand() % size;
+    swap(&matrix[Rrow1][Rcol1], &matrix[Rrow2][Rcol2]);
+  }
+  // set empty cell
+  int Rrow = rand() % size;
+  int Rcol = rand() % size;
+  *empty_cell = matrix[Rrow][Rcol];
+  matrix[Rrow][Rcol] = 0;
 }
 
 void print_matrix(int ** matrix, int size) {
@@ -102,57 +95,78 @@ void print_matrix(int ** matrix, int size) {
       for (int col = 0; col < size; col++)
       {
         if( matrix[row][col] )
-          printf("%2i ", matrix[row][col]);
+          printf("%3i ", matrix[row][col]);
         else
-          printf("%2s ", " ");
+          printf("%3s ", " ");
       }
       putchar('\n');
     }
 }
 
-void get_input(Input * input, int blank, int upper_limit) {
-  int is_i_int_valid = 0;
-  int is_i_dir_valid = 0;
+void get_input(int ** matrix, Input * input, int size, int * row, int * col, int empty_cell) {
+  int value_valid = 0;
+  int dir_valid = 0;
 
-  do {
-    printf("\n> ");
-    scanf("%i %i", &(input->value), &(input->direction));
+    Again:
+    printf("\nmov > ");
+    scanf("%i %c", &(input->value), &(input->direction));
+    if (input->value > 0 && input->value <= size*size && input->value != empty_cell)
+      value_valid = 1;
 
-    // check is int value entered is valid
-    if( input->value != blank)
-      is_i_int_valid = 1;
-    else if ( input->value > 0 && input->value <= upper_limit)
-      is_i_int_valid = 1;
+    if(!value_valid) goto Default;
 
+    // find position of value to move
+    for(*row = 0; *row < size; *row += 1)
+    {
+      for (*col = 0; *col < size; *col += 1)
+      {
+        if (matrix[*row][*col] == input->value)
+          goto check;
+      }
+    }
+    check:
     // check is direction submited is valid
-    // direction is stored following definition of enum Directions
-    if (input->direction >= UP && input->direction <= LEFT)
-      is_i_char_valid = 1;
+    input->direction = tolower(input->direction);
+    switch (input->direction) {
+      case 'u': if (*row > 0 && matrix[*row-1][*col] == 0) dir_valid = 1;
+        break;
+      case 'd': if (*row < size-1 && matrix[*row+1][*col] == 0) dir_valid = 1;
+        break;
+      case 'r': if (*col < size-1 && matrix[*row][*col+1] == 0) dir_valid = 1;
+        break;
+      case 'l': if (*col > 0 && matrix[*row][*col-1] == 0) dir_valid = 1;
+        break;
+      default: Default: puts("Move not allowed : invalid direction, value or impossible to execute"); goto Again; break;
+    }
 
-  } while(!is_i_int_valid && !is_i_char_valid);
+    if(!dir_valid) goto Default;
 }
 
-void make_move(int ** matrix, int size, int blank, Input input) {
-  // finding row and col of selected value
-  int row, col;
-  int found = 0;
-  for(row = 0; row < size || found; row++)
+void make_move(int ** matrix, char dir, int row, int col, int empty_cell) {
+  switch (dir) {
+    case 'u': swap(&matrix[row-1][col], &matrix[row][col]); break;
+    case 'd': swap(&matrix[row+1][col], &matrix[row][col]); break;
+    case 'r': swap(&matrix[row][col+1], &matrix[row][col]); break;
+    case 'l': swap(&matrix[row][col-1], &matrix[row][col]); break;
+  }
+}
+
+void swap(int *a, int *b) {
+  *a = *a ^ *b;
+  *b = *a ^ *b;
+  *a = *a ^ *b;
+}
+
+int is_solved(int ** matrix, int size, int empty_cell) {
+  for(int row = 0, counter = 1; row < size; row++)
   {
-    for (col = 0; col < size; col++) {
-      if (matrix[row][col] == input.value)
-      {
-        found = 1; // exit outer loop
-        return ; // exit inner loop
-      }
+    for(int col = 0; col < size; col++, counter++)
+    {
+
+      if(counter != empty_cell && matrix[row][col] != counter)
+        return 0;
     }
   }
 
-  // check if move can be applied
-  switch(input.direction)
-  {
-		case UP:
-		case DOWN:
-		case RIGHT:
-		case LEFT:
-	}
+  return 1;
 }
