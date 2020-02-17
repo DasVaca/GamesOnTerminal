@@ -38,8 +38,10 @@ int main() {
     print_matrix(matrix, size);
     get_input(matrix, input, size, &row, &col, empty_cell);
     make_move(matrix, input->direction, row, col, empty_cell);
-  } while(is_solved(matrix, size, empty_cell));
+  } while(!is_solved(matrix, size, empty_cell));
 
+  puts("Congrats, you solve the puzzle!!");
+  
   for(int i = 0; i < size; i++)
     free(matrix[i]);
   free(matrix);
@@ -72,21 +74,62 @@ void fill_matrix(int ** matrix, int size, int * empty_cell) {
     for (int col = 0; col < size; col++, inc++)
       matrix[row][col] = inc;
   }
-  // swap random cells
-  for(int changes = 0; changes < size*size - 2; changes++)
-  {
-    int Rrow1, Rcol1, Rrow2, Rcol2; // random cells to swap
-    Rrow1 = rand() % size;
-    Rcol1 = rand() % size;
-    Rrow2 = rand() % size;
-    Rcol2 = rand() % size;
-    swap(&matrix[Rrow1][Rcol1], &matrix[Rrow2][Rcol2]);
-  }
   // set empty cell
   int Rrow = rand() % size;
   int Rcol = rand() % size;
   *empty_cell = matrix[Rrow][Rcol];
   matrix[Rrow][Rcol] = 0;
+
+  // shuffle the puzzle
+  // this is made moving randomly the blank space, this ensure us
+  // that it is solvable
+  for(int moves = 0, dir; moves < size*size - 2; moves++)
+  {
+    Choose:
+    dir = rand() % 4; // there are 4 directions
+    switch (dir) { // convert number to character
+      case 0: dir = 'u'; break;
+      case 1: dir = 'd'; break;
+      case 2: dir = 'r'; break;
+      case 3: dir = 'l'; break;
+    }
+
+    // check if move can be applied, if not, choose random number again
+    switch (dir) {
+      case 'u':
+        if (Rrow > 0)
+        {
+          swap(&matrix[Rrow-1][Rcol], &matrix[Rrow][Rcol]);
+          Rrow--;
+        }
+        else goto Choose;
+        break;
+      case 'd':
+        if (Rrow < size-1)
+        {
+          swap(&matrix[Rrow+1][Rcol], &matrix[Rrow][Rcol]);
+          Rrow++;
+        }
+        else goto Choose;
+        break;
+      case 'r':
+        if (Rcol < size-1)
+        {
+          swap(&matrix[Rrow][Rcol+1], &matrix[Rrow][Rcol]);
+          Rcol++;
+        }
+        else goto Choose;
+        break;
+      case 'l':
+        if (Rcol > 0)
+        {
+          swap(&matrix[Rrow][Rcol-1], &matrix[Rrow][Rcol]);
+          Rcol--;
+        }
+        else goto Choose;
+        break;
+      }
+  }
 }
 
 void print_matrix(int ** matrix, int size) {
@@ -162,7 +205,6 @@ int is_solved(int ** matrix, int size, int empty_cell) {
   {
     for(int col = 0; col < size; col++, counter++)
     {
-
       if(counter != empty_cell && matrix[row][col] != counter)
         return 0;
     }

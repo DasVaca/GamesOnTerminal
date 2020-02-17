@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#define MAX_LENGTH 30
+#define MAX_LENGTH 100
 #define DELAY 1
 #define UP KEY_UP
 #define DOWN KEY_DOWN
